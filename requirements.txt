@@ -1,0 +1,18 @@
+# Bounded ranges. Exact versions used for the migration tests are listed in docs/OPENROUTER_MIGRATION.md.
+# Pin exact versions after your first successful install (pip freeze).
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+pydantic>=2.6,<3.0
+pydantic-settings>=2.2,<3.0
+httpx>=0.27,<1.0
+sqlalchemy>=2.0.30,<2.1
+psycopg[binary]>=3.1,<4.0
+pgvector>=0.3,<0.5
+alembic>=1.13,<2.0
+pymupdf>=1.24,<2.0
+# OCR fallback for scanned PDFs: bundled models, ONNX runtime on CPU, no external binary.
+rapidocr-onnxruntime>=1.4,<2.0
+# Answer generation AND embeddings both use the official OpenAI SDK as a compatibility client pointed at OpenRouter (one OPENROUTER_API_KEY). No local model weights.
+openai>=1.50,<4.0
+python-multipart>=0.0.9,<1.0
+pytest>=8.0,<9.0

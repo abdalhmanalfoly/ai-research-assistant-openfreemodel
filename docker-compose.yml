@@ -1,0 +1,9 @@
+# PostgreSQL + pgvector only. No model servers: answer generation and embeddings call the OpenRouter API (OPENROUTER_API_KEY).
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: {POSTGRES_USER: research, POSTGRES_PASSWORD: research, POSTGRES_DB: research}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+volumes:
+  pgdata:

@@ -1,0 +1,7 @@
+{
+  "name": "ai-research-assistant-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Mark the frontend as ES modules so `node --test frontend/tests/*.test.js` runs (no build step, no dependencies).",
+  "type": "module"
+}

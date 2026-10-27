@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+data/storage/
+data/pdfs/*.pdf
+*.gguf
+.env.*
+!.env.example

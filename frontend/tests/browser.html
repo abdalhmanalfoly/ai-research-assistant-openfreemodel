@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Browser tests</title>
+<style>body{font:14px system-ui;margin:2rem}.ok{color:#17794a}.fail{color:#b3261e;font-weight:700}li{margin:.2rem 0}</style></head>
+<body>
+  <h1>Frontend DOM tests (run in a real browser)</h1>
+  <p>Open via the backend or any static server, e.g. <code>http://localhost:8000/tests/browser.html</code>. MOCKED where network is involved; no real backend call is asserted.</p>
+  <ul id="results"></ul>
+  <script type="module" src="./browser/run.js"></script>
+</body>
+</html>
