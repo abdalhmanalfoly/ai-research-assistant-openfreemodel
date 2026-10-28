@@ -50,7 +50,7 @@ class HealthTests(unittest.TestCase):
         j = r.json()
         self.assertEqual((j["llm_provider"], j["llm"], j["embedding"]), ("openrouter", "configured", "configured"))
         self.assertEqual((j["chat_model_name"], j["embedding_model_name"], j["embedding_dimension"]),
-                         (CHAT_MODEL, EMBED_MODEL, 1024))
+                         (CHAT_MODEL, EMBED_MODEL, 2048))
         self.assertEqual(j["database"], "down")
         self.assertEqual(j["status"], "degraded")  # the API process being up is not "healthy"
         self.assertNotIn(FAKE_KEY, r.text)

@@ -3,11 +3,18 @@
 The client is the official OpenAI SDK configured with the OpenRouter base URL (`OPENROUTER_BASE_URL`) and
 `OPENROUTER_API_KEY`; the model id always comes from `EMBEDDING_MODEL`.
 
-Policy (identical for documents and queries): same model, same `dimensions`, no prefixes or instructions.
-OpenRouter's request schema supports `dimensions` (this model's published range is 128..2048, default 2048), but its
-catalog does not ADVERTISE per-model parameter support, so whether `dimensions` is honoured for the configured value
-must be observed from a real response. That is enforced here: every returned vector is checked against the configured
-`embedding_dimension` and anything else raises EmbeddingDimensionMismatch loudly (no silent truncation, no padding).
+Policy (identical for documents and queries): same model, same dimension, no prefixes or instructions, and NO
+`input_type` parameter — OpenRouter's OpenAI-compatible `/embeddings` endpoint does not support Cohere-style
+`input_type`, so indexing and queries send exactly the same plain text (verified contract; a divergence here would
+put queries in a different space than stored chunks).
+
+Dimension policy (2048-d architecture): the shipped configuration sets EMBEDDING_DIMENSIONS=2048, which equals this
+model's documented native/default output size. With a native-size configuration the request therefore OMITS the
+`dimensions` parameter entirely (explicitly requested sizes are reserved for non-native configurations, e.g. 1024).
+OpenRouter's request schema supports `dimensions` (documented range 128..2048 per the model card), but its catalog
+does not ADVERTISE per-model parameter support, so whatever is configured is verified against every real response:
+each returned vector must contain exactly `EMBEDDING_DIMENSIONS` finite numeric values and anything else raises
+EmbeddingDimensionMismatch loudly (no silent truncation, no padding, no silent model switch).
 pgvector searches by cosine distance, which is scale-invariant, so no local normalisation is applied; vectors must be
 finite and non-zero. Input order is preserved: the response is re-ordered by its `index` field and checked for
 completeness.
@@ -35,10 +42,12 @@ class OpenRouterEmbedder:
         if batch_size < 1:
             raise ValueError("batch_size must be >= 1")
         self.model, self.dimension, self.batch_size, self.max_input_chars = model, dimension, batch_size, max_input_chars
-        # `dimensions` is sent for models whose published documentation confirms they support it; unknown models get
-        # their natural default size (validated at runtime instead of assumed).
+        # `dimensions` is sent for models whose published documentation confirms they support it AND for
+        # configurations that deviate from the model's native/default output size; a native-size configuration
+        # (2048 for the shipped model) omits the parameter so the model returns its natural full vector.
         info = Settings.embedding_info(model)
         self.send_dimensions = info["dimensions_param"] if (info and send_dimensions is None) else bool(send_dimensions)
+        self.native_default = info["default"] if info else None
         self._aclient, self._sclient = async_client, sync_client
 
     @classmethod
@@ -64,7 +73,7 @@ class OpenRouterEmbedder:
 
     def _kwargs(self, batch: list[str]) -> dict:
         kw: dict = {"model": self.model, "input": batch, "encoding_format": "float"}
-        if self.send_dimensions:
+        if self.send_dimensions and self.native_default != self.dimension:
             kw["dimensions"] = self.dimension
         return kw
 

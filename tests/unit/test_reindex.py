@@ -41,7 +41,7 @@ class ReindexTests(unittest.TestCase):
         repo, fake = FakeChunkRepo(dict(TEXTS), done={"id00", "id01"}), FakeOpenAI()
         rep = svc(repo, fake).run()
         self.assertEqual((rep.updated, embedded_count(fake)), (8, 8))
-        self.assertEqual(repo.rows["id00"]["vec"], [0.0])
+        self.assertEqual(repo.rows["id00"]["vec"], [0.0] * 1024)  # 1024-d placeholder vector, untouched
 
     def test_unembeddable_chunk_stays_pending_others_succeed(self):
         texts = dict(TEXTS)

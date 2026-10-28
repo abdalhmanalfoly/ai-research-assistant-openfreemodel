@@ -82,17 +82,23 @@ PAPER_B = PaperRef("p-b", "Synthetic Paper B on Segmentation", ["B. Author"], No
 
 # ---------------- reindex fakes (TEST-ONLY) ----------------
 class FakeChunkRepo:
-    """In-memory ChunkRepo. rows: id -> {text, vec, model}. Pending = no vec or model != current."""
+    """In-memory ChunkRepo. rows: id -> {text, vec, model, dim}. Pending = no vec, or model != current,
+    or dim != current (must match the REAL SqlChunkRepo._pending exactly — same model with a wrong
+    dimension stays pending too; that is the 1024->2048 migration case)."""
 
-    def __init__(self, texts: dict[str, str], model: str = "nvidia/nemotron-3.5-embed-1b:free", done: set[str] = ()):
+    def __init__(self, texts: dict[str, str], model: str = "nvidia/nemotron-3.5-embed-1b:free",
+                 done: set[str] = (), embedded_dim: int = 1024, target_dim: int | None = None):
         self.model = model
-        self.rows = {i: {"text": t, "vec": [0.0] if i in done else None,
-                         "model": model if i in done else "BAAI/bge-large-en-v1.5"}  # legacy model => pending
+        self.dim = target_dim if target_dim is not None else embedded_dim  # the CONFIGURED target dimension
+        self.embedded_dim = embedded_dim
+        self.rows = {i: {"text": t, "vec": [0.0] * embedded_dim if i in done else None,
+                         "model": model if i in done else "BAAI/bge-large-en-v1.5",  # legacy model => pending
+                         "dim": embedded_dim if i in done else None}
                      for i, t in texts.items()}
         self.saves = 0
 
     def _pending(self, r):
-        return r["vec"] is None or r["model"] != self.model
+        return r["vec"] is None or r["model"] != self.model or r["dim"] != self.dim
 
     def count_pending(self):
         return sum(self._pending(r) for r in self.rows.values())
@@ -104,4 +110,4 @@ class FakeChunkRepo:
     def save(self, items):
         self.saves += 1
         for i, v in items:
-            self.rows[i].update(vec=v, model=self.model)
+            self.rows[i].update(vec=v, model=self.model, dim=len(v))

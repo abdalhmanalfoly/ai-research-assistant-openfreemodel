@@ -21,15 +21,22 @@ class Base(DeclarativeBase):
 
 class Paper(Base):
     __tablename__ = "papers"
+    # Owner-scoped uniqueness (audit 2026-10-28: the live schema replaced 0001's global doi/content_hash uniques
+    # with per-owner ones; all rows uploaded without an owner keep owner_id NULL and are application-invisible
+    # to scoping). NOTE: unique constraints treat NULLs as distinct, so unowned rows are only ever "unique"
+    # accidentally — the ingestion path should always set owner_id when auth is wired up.
+    __table_args__ = (UniqueConstraint("owner_id", "doi", name="uq_papers_owner_doi"),
+                      UniqueConstraint("owner_id", "content_hash", name="uq_papers_owner_content_hash"))
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)  # FK users(id) — created by migration 0006; no ORM User model yet (docs: tables added only when a feature needs them)
     title: Mapped[str] = mapped_column(Text)
     authors: Mapped[list] = mapped_column(JSONB, default=list)
     abstract: Mapped[str | None] = mapped_column(Text)
     publication_year: Mapped[int | None] = mapped_column(Integer, index=True)
-    doi: Mapped[str | None] = mapped_column(String(255), unique=True)
+    doi: Mapped[str | None] = mapped_column(String(255))
     source_url: Mapped[str | None] = mapped_column(Text)
     storage_key: Mapped[str | None] = mapped_column(Text)
-    content_hash: Mapped[str | None] = mapped_column(String(64), unique=True)  # sha256 of PDF; idempotency key
+    content_hash: Mapped[str | None] = mapped_column(String(64))  # sha256 of PDF; idempotency key
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending|processing|indexed|failed|needs_ocr
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

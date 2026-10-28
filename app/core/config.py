@@ -74,10 +74,11 @@ class Settings(BaseSettings):
     embedding_model: str = "nvidia/nemotron-3.5-embed-1b:free"
     # Must equal the vector(N) column (the embedding migrations create it from this value). Env: EMBEDDING_DIMENSIONS
     # (EMBEDDING_DIM is accepted as the legacy name). The model's DEFAULT output size is 2048, which exceeds the
-    # pgvector HNSW limit (2000): at 2048 the migration stores vectors WITHOUT an HNSW index (full-scan retrieval,
-    # fine for small/medium corpora), so the shipped configuration requests 1024 via the `dimensions` parameter
-    # instead. Every returned vector is validated against this value at runtime.
-    embedding_dim: int = Field(1024, gt=0, le=4096,
+    # pgvector HNSW limit (2000): the shipped configuration requests the model's native 2048 — the migration stores
+    # vectors WITHOUT an HNSW index at that size (full-scan retrieval, fine for small/medium corpora). Requesting any
+    # other size in 128..2047 via the `dimensions` parameter keeps an HNSW index possible. Every returned vector is
+    # validated against this value at runtime.
+    embedding_dim: int = Field(2048, gt=0, le=4096,
                                validation_alias=AliasChoices("EMBEDDING_DIMENSIONS", "EMBEDDING_DIM"))
     embedding_batch_size: int = Field(64, ge=1, le=512)  # inputs per API request
     embedding_timeout_seconds: float = Field(30, gt=0, le=300)

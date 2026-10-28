@@ -22,9 +22,30 @@ class RequestTests(unittest.TestCase):
         self.assertEqual((body["model"], body["dimensions"], body["encoding_format"]), (EMBED_MODEL, 1024, "float"))
         self.assertEqual(fake.requests[0].headers["authorization"], f"Bearer {FAKE_KEY}")
 
+        fake = FakeOpenAI()
+        embedder(fake, embedding_dim=2048).embed_documents_sync(["alpha"])  # the model's NATIVE size (2048)
+        self.assertNotIn("dimensions", fake.bodies("/embeddings")[0])  # native config OMITS the parameter entirely
+
+    def test_native_2048_response_validated_without_explicit_parameter(self):
         fake = FakeOpenAI(dim=2048)
-        embedder(fake, embedding_dim=2048).embed_documents_sync(["alpha"])  # the model's default/full size
-        self.assertEqual(fake.bodies("/embeddings")[0]["dimensions"], 2048)
+        e = embedder(fake, embedding_dim=2048)
+        out = e.embed_documents_sync(["alpha", "beta"])
+        self.assertEqual([len(v) for v in out], [2048, 2048])
+        body = fake.bodies("/embeddings")[0]
+        self.assertEqual(body["model"], "nvidia/nemotron-3.5-embed-1b:free")
+        self.assertNotIn("dimensions", body)  # native request; the contract below has no input_type either
+        self.assertNotIn("input_type", body)  # OpenAI-compatible endpoint: query and document texts are identical
+
+    def test_native_config_rejects_a_wrong_size_response_loudly(self):
+        fake = FakeOpenAI()
+        fake.script = [(200, {"data": [{"index": 0, "embedding": [0.0] * 1024, "object": "embedding"}]}, {})]
+        with self.assertRaises(E.EmbeddingDimensionMismatch):
+            embedder(fake, embedding_dim=2048).embed_documents_sync(["alpha"])
+
+    def test_non_native_config_still_sends_explicit_dimensions(self):
+        fake = FakeOpenAI(dim=1024)
+        embedder(fake, embedding_dim=1024).embed_documents_sync(["alpha"])
+        self.assertEqual(fake.bodies("/embeddings")[0]["dimensions"], 1024)  # deviation opt-in is explicit
 
     def test_models_without_documented_dimension_support_do_not_send_dimensions(self):
         # Unknown model ids are never ASSUMED to honour `dimensions`: their natural size is configured and every

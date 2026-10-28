@@ -69,6 +69,19 @@ class CosineSemanticsTests(unittest.TestCase):
         self.assertTrue(any("embedding_model" in s for s in sqls))
         self.assertTrue(any("embedding_dim" in s for s in sqls))
 
+    def test_mixed_generation_vectors_can_never_be_compared_at_2048(self):
+        """After the 2048-d migration a stale 1024-d or foreign-model vector must never match the query space."""
+        from app.core.config import Settings
+        from app.db.repositories.pgvector_store import PgVectorStore
+
+        s = Settings(_env_file=None)  # shipped configuration: nemotron @ 2048
+        conds = PgVectorStore(None, s.embedding_model, s.embedding_dim)._compatible()
+        self.assertTrue(any(str(c.left) == "chunks.embedding_model" and c.right.value == s.embedding_model
+                            for c in conds))          # same model only
+        self.assertTrue(any(str(c.left) == "chunks.embedding_dim" and c.right.value == 2048
+                            for c in conds))          # same dimension only
+        self.assertEqual(s.embedding_dim, 2048)
+
 
 class SufficiencyBoundaryTests(unittest.TestCase):
     def test_relevant_evidence_just_above_threshold_passes_the_sufficiency_check(self):

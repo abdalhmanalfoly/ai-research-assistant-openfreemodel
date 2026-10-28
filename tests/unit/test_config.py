@@ -17,7 +17,8 @@ class ConfigTests(unittest.TestCase):
         s = S()
         self.assertEqual((s.llm_provider, s.llm_model), ("openrouter", CHAT_MODEL))
         self.assertEqual((s.embedding_provider, s.embedding_model, s.embedding_dim),
-                         ("openrouter", EMBED_MODEL, 1024))
+                         ("openrouter", EMBED_MODEL, 2048))
+        self.assertTrue(s.embedding_dim > 2000)  # above the pgvector HNSW limit on purpose (full-scan search)
         self.assertEqual(s.openrouter_base_url, "https://openrouter.ai/api/v1")
 
     def test_models_and_dimensions_come_from_environment(self):
@@ -108,7 +109,7 @@ class ConfigTests(unittest.TestCase):
         s = S(openrouter_api_key=FAKE_KEY)
         d = s.diagnostics()
         self.assertEqual((d["llm_provider"], d["llm_model"]), ("openrouter", CHAT_MODEL))
-        self.assertEqual(d["embedding_dimension"], 1024)
+        self.assertEqual(d["embedding_dimension"], 2048)
         self.assertEqual(d["openrouter_host"], "openrouter.ai")
         self.assertNotIn(FAKE_KEY, json.dumps(d))
 
